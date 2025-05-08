@@ -1,0 +1,70 @@
+name: Build Latest Repo
+
+on:
+  schedule:
+    - cron: '0 19 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    name: Sync Forked Repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: Add upstream and fetch
+        run: |
+          git remote add upstream https://github.com/pmkol/openwrt-lite.git
+          git fetch upstream
+
+      - name: Save this workflow file
+        run: |
+          mkdir -p /tmp/backup
+          if [ -f .github/workflows/build-latest-repo.yml ]; then
+            cp .github/workflows/build-latest-repo.yml /tmp/backup/build-latest-repo.yml
+          fi
+
+      - name: Merge upstream changes
+        run: |
+          git checkout main
+          git merge upstream/main --no-edit
+
+      - name: Restore sync workflow
+        run: |
+          if [ -f /tmp/backup/build-latest-repo.yml ]; then
+            # 确保目录存在
+            mkdir -p .github/workflows
+            # 复制文件回原处
+            cp /tmp/backup/build-latest-repo.yml .github/workflows/build-latest-repo.yml
+            # 检查是否有变化
+            if git diff --quiet .github/workflows/build-latest-repo.yml; then
+              echo "No changes to build-latest-repo.yml, no commit needed"
+            else
+              git add .github/workflows/build-latest-repo.yml
+              # 使用--amend选项修改最后一次提交
+              git commit --amend --no-edit
+            fi
+          fi
+
+      - name: Push Changes to Repo
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git push https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git main --force
+
+      - name: Delete Workflow Runs
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 0
+          keep_minimum_runs: 2
