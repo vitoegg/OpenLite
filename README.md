@@ -5,6 +5,16 @@
 - 软件源将在2026年4月20日后停止维护，届时将无法通过软件源在线升级部分插件
 - 用户可以继续使用本项目编译 OpenWRT 23.05 及支持该版本的最新插件
 
+#### CVE-2026-31431 漏洞修复方法：
+执行以下命令
+```
+sed -i '/^algif_aead/ s/^/#/' /etc/modules.d/09-crypto-user
+rmmod algif_aead
+mv /lib/modules/6.11.11/algif_aead.ko /lib/modules/6.11.11/algif_aead.ko.bak
+```
+
+---
+
 ### 基于原生 OpenWrt 优化的固件，提供高效、稳定的使用体验
 该项目使用自动构建的扩展软件源，优化、修复官方插件，补充官方源中未包含的常用插件
 
